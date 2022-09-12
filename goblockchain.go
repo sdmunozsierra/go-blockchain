@@ -8,7 +8,11 @@ import (
 	"time"
 )
 
-const MINING_DIFFICULTY = 3
+const (
+	MINING_DIFFICULTY = 3
+	MINING_SENDER     = "THE CLETA BLOCKCHAIN"
+	MINING_REWARD     = 1.0
+)
 
 type Block struct {
 	timestamp    int64
@@ -36,8 +40,9 @@ func (b *Block) Print() {
 }
 
 type Blockchain struct {
-	transactionPool []*Transaction
-	chain           []*Block
+	transactionPool   []*Transaction
+	chain             []*Block
+	blockchainAddress string
 }
 
 func (b *Block) Hash() [32]byte {
@@ -60,9 +65,10 @@ func (b *Block) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewBlockchain() *Blockchain {
+func NewBlockchain(blockchainAddress string) *Blockchain {
 	b := &Block{}
 	bc := new(Blockchain)
+	bc.blockchainAddress = blockchainAddress
 	bc.CreateBlock(0, b.Hash())
 	return bc
 }
@@ -80,6 +86,7 @@ func (bc *Blockchain) CreateBlock(nonce int, previousHash [32]byte) *Block {
 
 func (bc *Blockchain) Print() {
 	for i, block := range bc.chain {
+
 		fmt.Printf("%s Chain %d %s\n", strings.Repeat("=", 25), i, strings.Repeat("=", 25))
 		block.Print()
 	}
@@ -105,6 +112,7 @@ func (bc *Blockchain) ValidProof(nonce int, previousHash [32]byte, transactions 
 	zeroes := strings.Repeat("0", difficulty)
 	guessBlock := Block{0, nonce, previousHash, transactions}
 	guessHashStr := fmt.Sprintf("%x", guessBlock.Hash())
+	//fmt.Println(guessHashStr) // print guess hashes until leading zeroes
 	return guessHashStr[:difficulty] == zeroes
 }
 
@@ -117,6 +125,17 @@ func (bc *Blockchain) ProofOfWork() int {
 		nonce += 1
 	}
 	return nonce
+}
+
+func (bc *Blockchain) Mining() bool {
+	// send reward to miner
+	bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD)
+	nonce := bc.ProofOfWork()
+	previousHash := bc.LastBlock().Hash()
+	bc.CreateBlock(nonce, previousHash)
+	// create a logger
+	fmt.Println("action=mining, status=success")
+	return true
 }
 
 type Transaction struct {
@@ -150,20 +169,23 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 
 func main() {
 	// Create Blockchain
-	blockChain := NewBlockchain()
+	myBlockchainAddress := "my_cleta_blockcahin_addres"
+	blockChain := NewBlockchain(myBlockchainAddress)
 	blockChain.Print()
 
 	blockChain.AddTransaction("A", "B", 1.0)
-	previousHash := blockChain.LastBlock().Hash()
-	nonce := blockChain.ProofOfWork()
-	blockChain.CreateBlock(nonce, previousHash)
+	//previousHash := blockChain.LastBlock().Hash()
+	//nonce := blockChain.ProofOfWork()
+	//blockChain.CreateBlock(nonce, previousHash)
+	blockChain.Mining()
 	blockChain.Print()
 
 	blockChain.AddTransaction("C", "D", 2.0)
 	blockChain.AddTransaction("X", "Z", 3.0)
-	previousHash = blockChain.LastBlock().Hash()
-	nonce = blockChain.ProofOfWork()
-	blockChain.CreateBlock(nonce, previousHash)
+	//previousHash = blockChain.LastBlock().Hash()
+	//nonce = blockChain.ProofOfWork()
+	//blockChain.CreateBlock(nonce, previousHash)
+	blockChain.Mining()
 	blockChain.Print()
 
 }
